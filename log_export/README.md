@@ -1,9 +1,9 @@
-**Log Export** 
+## Log Export 
 
-This utility lets you execute DQL and export the results in JSON or CSV format.
+This utility lets you execute DQL and bulk export the results from the entire specified duration in JSON or CSV format.
 
 
-**Usage**
+## Usage
 
 `log_export.py [-h] [-q QUERY] [-sid SCOPE_ID] [-ft FILE_TYPE]`
 
@@ -17,13 +17,21 @@ This utility lets you execute DQL and export the results in JSON or CSV format.
   
     -ft FILE_TYPE, --FILE_TYPE FILE_TYPE output file format. (json/csv) [default:json]
 
+## Connection Parameters
 
-**Note regarding Limit**
+This utility requires you DNIF Console IP and a <a href="https://docs.dnif.it/docs/manage-token">Token</a> to function.
+
+You'll be prompted to enter these values the first time you run this script.
+
+We cache these values for you in a config.yaml file to save on time and efforts.
+        
+
+## Note regarding Limit
 
     limit value is used as page size.
     limit 1000 will pull all events in the specified duration - but 1000 records at a time.
 
-**Examples**
+## Examples
 
 `python3 log_export.py -q '_fetch * from event where $Stream=FIREWALL AND $Duration=1m limit 1000'`
 
