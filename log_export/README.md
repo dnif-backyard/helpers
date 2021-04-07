@@ -2,15 +2,6 @@
 
 This utility lets you execute DQL and export the results in JSON or CSV format.
 
-`Execute`
-
-`python3 log_export.py -q '< query >' -sid '< scope_id >' -ft '< json / csv >'`
-
-`-q , --QUERY`  _query_ 
-
-**Optional** 
-
-`-sid , --SCOPE_ID` _scope_id_   `-ft , --FILE_TYPE` _file_type_
 
 **Usage**
 
@@ -25,6 +16,12 @@ This utility lets you execute DQL and export the results in JSON or CSV format.
     -sid SCOPE_ID, --SCOPE_ID SCOPE_ID  scope_id. [default:default]
   
     -ft FILE_TYPE, --FILE_TYPE FILE_TYPE output file format. (json/csv) [default:json]
+
+
+**Note regarding Limit**
+
+    limit value is used as page size.
+    limit 1000 will pull all events in the specified duration - but 1000 records at a time.
 
 **Examples**
 
