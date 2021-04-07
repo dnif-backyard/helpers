@@ -268,7 +268,6 @@ def execute():
 
         task_id = invoke_call(data['ip_address'], new_query,
                               data['token'], None, args.SCOPE_ID)
-        print(task_id)
         if task_id:
             while True:
                 task_status = get_task_status(data['ip_address'], task_id, data['token'])
