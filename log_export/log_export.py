@@ -229,7 +229,11 @@ def get_task_status(ip_address, task_id, token):
         response = requests.get(url, headers=headers, data=payload, verify=False)
         if response.status_code == 200:
             data = response.json()
-            return data
+            if data['status'].lower() == 'success':
+                return data
+            else:
+                print('Task Execution Failed Try Again')
+                sys.exit()
         return data
     except ConnectionError as conn_err:
         print("Error in get_task_status => ", conn_err)
@@ -271,9 +275,15 @@ def execute():
         if task_id:
             while True:
                 task_status = get_task_status(data['ip_address'], task_id, data['token'])
-                if task_status['task_state'] == 'SUCCESS':
-                    get_data = get_result(data['ip_address'], task_id, data['token'], limit)
-                    break
+                if task_status['task_state'] in ['STARTED', 'PENDING']:
+                    continue
+                else:
+                    if task_status['task_state'] != 'SUCCESS':
+                        print("Tasking Execution Failed Please Try Again")
+                        sys.exit()
+                    else:
+                        get_data = get_result(data['ip_address'], task_id, data['token'], limit)
+                        break
 
             if get_data['status'].lower() == 'success':
                 if args.FILE_TYPE == 'csv':
@@ -314,10 +324,15 @@ def execute():
                             while True:
                                 task_status = get_task_status(data['ip_address'],
                                                               task_id, data['token'])
-                                if task_status['task_state'] == 'SUCCESS':
-                                    get_data = get_result(data['ip_address'],
-                                                          task_id, data['token'], limit)
-                                    break
+                                if task_status['task_state'] in ['STARTED', 'PENDING']:
+                                    continue
+                                else:
+                                    if task_status['task_state'] != 'SUCCESS':
+                                        print("Tasking Execution Failed Please Try Again")
+                                        sys.exit()
+                                    else:
+                                        get_data = get_result(data['ip_address'], task_id, data['token'], limit)
+                                        break
 
                             if get_data['status'].lower() == 'success':
 
