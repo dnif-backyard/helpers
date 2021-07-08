@@ -88,10 +88,12 @@ def get_new_query(query):
         :return:  query, start_time, limit
         :rtype: string, date, integer
     """
+    new_query = ''
+    startime = ''
+    endtime = ''
+    limit = 0
     try:
         fmt = '%Y-%m-%dT%H:%M:%S'
-        new_query =''
-        startime = ''
         query_list = query.split()
         for i in query_list:
             if '$Duration' in i:
@@ -106,7 +108,7 @@ def get_new_query(query):
         _limit = re.search(r"limit\s+(\d+)", query)
         limit = _limit.group(1)
 
-        return new_query, startime, limit
+        return new_query, startime, endtime, limit
     except IndexError as err:
         print("Error in getting query => ", err)
         return new_query, startime, limit
@@ -131,6 +133,7 @@ def invoke_call(ip_address, query, token, offset=None, scope_id="default"):
     :return: task_id
     :rtype: str
     """
+    task_id = None
     try:
         time_zone = subprocess.check_output("cat /etc/timezone", shell=True)
         time_zone = time_zone.decode().strip()
@@ -174,7 +177,7 @@ def invoke_call(ip_address, query, token, offset=None, scope_id="default"):
         return task_id
 
 
-def get_result(ip_address, task_id, token, limit=100):
+def get_result(ip_address, task_id, token, limit=100, page_no=1):
     """
     Getting the data for give task_id
     :param ip_address: Console to connect
@@ -190,7 +193,7 @@ def get_result(ip_address, task_id, token, limit=100):
     """
     try:
         url = f"https://{ip_address}:8090/wrk/api/dispatcher/task" \
-              f"/result/{task_id}?pagesize={limit}&pageno=1"
+              f"/result/{task_id}?pagesize={limit}&pageno={page_no}"
         payload = {}
         headers = {'Token': token}
         response = requests.get(url, headers=headers, data=payload, verify=False)
@@ -221,8 +224,8 @@ def get_task_status(ip_address, task_id, token):
     :return: response
     :rtype: dict
     """
+    data = {}
     try:
-        data = {}
         url = f"https://{ip_address}/wrk/api/dispatcher/task/state/{task_id}"
         payload = {}
         headers = {'Token': token}
@@ -243,35 +246,28 @@ def get_task_status(ip_address, task_id, token):
         return data
 
 
-def execute():
+def with_scroll(data, query, scope_id, file_type):
     """
-    main method for the file
+    the call brings the data between the time range and limit
+    :param data: config data for api call
+    :type data: dict
+    :param query: user provided query
+    :type query: str
+    :param scope_id: user provided scope_id else default
+    :type scope_id: str
+    :param file_type: type of file to store data in
+    :type file_type: str
+    :return:
+    :rtype:
     """
     try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-q", "--QUERY", help="DQL query")
-        parser.add_argument("-sid", "--SCOPE_ID", help="scope_id. "
-                                                       "[default:default]", default='default')
-        parser.add_argument("-ft", "--FILE_TYPE", help="output file format. "
-                                                       "(json/csv) [default:json] ", default='json')
-
-        args = parser.parse_args()
-        if not args.QUERY:
-            print(f'{BOLD} option not provided run python3 log_capture.py --help {END}')
-            sys.exit()
-
-        if os.path.exists('query_config.yaml'):
-            with open('query_config.yaml', 'r') as f_obj:
-                data = yaml.safe_load(f_obj)
-        else:
-            data = without_conf()
-
         timestamp = int(time.time())
         count = 0
-        new_query, start_time, limit = get_new_query(args.QUERY)
+        new_query, start_time, endtime, limit = get_new_query(query)
 
         task_id = invoke_call(data['ip_address'], new_query,
-                              data['token'], None, args.SCOPE_ID)
+                              data['token'], None, scope_id)
+
         if task_id:
             while True:
                 task_status = get_task_status(data['ip_address'], task_id, data['token'])
@@ -286,7 +282,7 @@ def execute():
                         break
 
             if get_data['status'].lower() == 'success':
-                if args.FILE_TYPE == 'csv':
+                if file_type == 'csv':
                     with open(f'{timestamp}.csv', 'w', newline='') as f_obj:
                         w_f = csv.writer(f_obj)
                         w_f.writerow(get_data['result'][0].keys())
@@ -301,7 +297,7 @@ def execute():
                                 output_file.write(f"{dic}\n")
                                 count = count + 1
 
-                print(f"\n\r Writing to file {BOLD}{GREEN}: {timestamp}.{args.FILE_TYPE}{END}")
+                print(f"\n\r Writing to file {BOLD}{GREEN}: {timestamp}.{file_type}{END}")
                 print(f"\r Status: {YELLOW}IN PROGRESS \t{END} "
                       f"Records written: {BOLD}{YELLOW}{count}{END} ", end="")
 
@@ -313,13 +309,13 @@ def execute():
                     sys.exit()
 
                 while True:
-                    if int(start_time) >= get_time:
+                    if int(endtime) <= get_time:
                         print(f"\r Status: {GREEN} COMPLETED \t{END} "
                               f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
                         break
                     else:
                         task_id = invoke_call(data['ip_address'],
-                                              new_query, data['token'], get_time, args.SCOPE_ID)
+                                              new_query, data['token'], get_time, scope_id)
                         if task_id:
                             while True:
                                 task_status = get_task_status(data['ip_address'],
@@ -331,12 +327,13 @@ def execute():
                                         print("Tasking Execution Failed Please Try Again")
                                         sys.exit()
                                     else:
-                                        get_data = get_result(data['ip_address'], task_id, data['token'], limit)
+                                        get_data = get_result(data['ip_address'],
+                                                              task_id, data['token'], limit)
                                         break
 
                             if get_data['status'].lower() == 'success':
 
-                                if args.FILE_TYPE == 'json':
+                                if file_type == 'json':
                                     with open(f'{timestamp}.json', 'a') as output_file:
                                         for dic in get_data['result']:
                                             if dic['$CNAMTime'] > int(start_time):
@@ -356,6 +353,7 @@ def execute():
                                 if len(get_data['result']) != 0:
                                     get_time = get_data['result'][-1]['$CNAMTime']
                                 else:
+                                    print("lenth of list", len(get_data['result']))
                                     print(f"\r Status: {GREEN} COMPLETED \t{END} "
                                           f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
                                     sys.exit()
@@ -367,9 +365,161 @@ def execute():
                 print("Something went Wrong => Didn't got result")
         else:
             print("Something went Wrong => Didn't got the Id")
+    except Exception as err:
+        print("Error in with_scroll => ", err)
 
-    except IndexError as err:
-        print("Error in getting query => ", err)
+
+def without_scroll(data, query, scope_id, file_type):
+    """
+    the call brings the data between the time range irrespective of limit
+    :param data: config data for api call
+    :type data: dict
+    :param query: user provided query
+    :type query: str
+    :param scope_id: user provided scope_id else default
+    :type scope_id: str
+    :param file_type: type of file to store data in
+    :type file_type: str
+    :return:
+    :rtype:
+    """
+    try:
+        timestamp = int(time.time())
+        count = 0
+        call_again = False
+        page_no = 0
+        new_query, start_time, end_time, limit = get_new_query(query)
+        task_id = invoke_call(data['ip_address'], new_query,
+                              data['token'], None, scope_id)
+        limit = 100
+        limit_check = limit
+        if task_id:
+            while True:
+                task_status = get_task_status(data['ip_address'], task_id, data['token'])
+                if task_status['task_state'] in ['STARTED', 'PENDING']:
+                    continue
+                else:
+                    if task_status['task_state'] != 'SUCCESS':
+                        print("Tasking Execution Failed Please Try Again")
+                        sys.exit()
+                    else:
+                        get_data = get_result(data['ip_address'], task_id, data['token'], limit)
+                        break
+
+            if get_data['status'].lower() == 'success':
+                if file_type == 'csv':
+                    with open(f'{timestamp}.csv', 'w', newline='') as f_obj:
+                        w_f = csv.writer(f_obj)
+                        w_f.writerow(get_data['result'][0].keys())
+                        for row in get_data['result']:
+                            if row['$CNAMTime'] > int(start_time):
+                                w_f.writerow(list(row.values()))
+                                count = count + 1
+                else:
+                    with open(f'{timestamp}.json', 'w') as output_file:
+                        for dic in get_data['result']:
+                            if dic['$CNAMTime'] > int(start_time):
+                                output_file.write(f"{dic}\n")
+                                count = count + 1
+
+                print(f"\n\r Writing to file {BOLD}{GREEN}: {timestamp}.{file_type}{END}")
+                print(f"\r Status: {YELLOW}IN PROGRESS \t{END} "
+                      f"Records written: {BOLD}{YELLOW}{count}{END} ", end="")
+
+                if get_data['total_count'] > limit_check:
+                    call_again = True
+                    limit_check = limit_check + limit
+                    page_no = 2
+                else:
+                    print(f"\r Status: {GREEN} COMPLETED \t{END} "
+                          f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
+                    sys.exit()
+
+                while call_again:
+                    if task_id:
+                        while True:
+                            task_status = get_task_status(data['ip_address'],
+                                                          task_id, data['token'])
+                            if task_status['task_state'] in ['STARTED', 'PENDING']:
+                                continue
+                            else:
+                                if task_status['task_state'] != 'SUCCESS':
+                                    print("Tasking Execution Failed Please Try Again")
+                                    sys.exit()
+                                else:
+                                    get_data = get_result(data['ip_address'], task_id,
+                                                          data['token'], limit, page_no)
+                                    break
+
+                        if get_data['status'].lower() == 'success':
+                            if file_type == 'json':
+                                with open(f'{timestamp}.json', 'a') as output_file:
+                                    for dic in get_data['result']:
+                                        if dic['$CNAMTime'] > int(start_time):
+                                            output_file.write(f"{dic}\n")
+                                            count = count + 1
+                            else:
+                                with open(f'{timestamp}.csv', 'a', newline='') as f_obj:
+                                    w_f = csv.writer(f_obj)
+                                    for row in get_data['result']:
+                                        if row['$CNAMTime'] > int(start_time):
+                                            w_f.writerow(list(row.values()))
+                                            count = count + 1
+
+                            print(f"\r Status: {YELLOW}IN PROGRESS \t{END} "
+                                  f"Records written: {BOLD}{YELLOW}{count}{END} ", end="")
+
+                            if get_data['total_count'] > limit_check:
+                                limit_check = limit_check + limit
+                                call_again = True
+                                page_no = page_no + 1
+                            else:
+                                print(f"\r Status: {GREEN} COMPLETED \t{END} "
+                                      f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
+                                sys.exit()
+                        else:
+                            print("Something went Wrong => Didn't got result")
+                    else:
+                        print("Something went Wrong => Didn't got the Id")
+            else:
+                print("Something went Wrong => Didn't got result")
+        else:
+            print("Something went Wrong => Didn't got the Id")
+
+    except Exception as err:
+        print("Error in without_scroll => ", err)
+
+
+def execute():
+    """
+    main method for the file
+    """
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-q", "--QUERY", help="DQL query")
+        parser.add_argument("-no_scroll", "--NO_SCROLL",
+                            action='store_true', help="NO Scroll option")
+        parser.add_argument("-sid", "--SCOPE_ID", help="scope_id. "
+                                                       "[default:default]", default='default')
+        parser.add_argument("-ft", "--FILE_TYPE", help="output file format. "
+                                                       "(json/csv) [default:json] ", default='json')
+
+        args = parser.parse_args()
+        if not args.QUERY:
+            print(f'{BOLD} option not provided run python3 log_capture.py --help {END}')
+            sys.exit()
+
+        if os.path.exists('query_config.yaml'):
+            with open('query_config.yaml', 'r') as f_obj:
+                data = yaml.safe_load(f_obj)
+        else:
+            data = without_conf()
+
+        if args.NO_SCROLL:
+            without_scroll(data, args.QUERY, args.SCOPE_ID, args.FILE_TYPE)
+        else:
+            with_scroll(data, args.QUERY, args.SCOPE_ID, args.FILE_TYPE)
+
     except Exception as err:
         print("Error in Execute => ", err)
 

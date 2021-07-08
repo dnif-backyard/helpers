@@ -5,7 +5,7 @@ This utility lets you execute DQL and bulk export the results from the entire sp
 
 ## Usage
 
-`log_export.py [-h] [-q QUERY] [-sid SCOPE_ID] [-ft FILE_TYPE]`
+`log_export.py [-h] [-q QUERY] [-sid SCOPE_ID] [-ft FILE_TYPE] [-no_scroll NO_SCROLL]`
 
     optional arguments: 
 
@@ -16,6 +16,8 @@ This utility lets you execute DQL and bulk export the results from the entire sp
     -sid SCOPE_ID, --SCOPE_ID SCOPE_ID  scope_id. [default:default]
   
     -ft FILE_TYPE, --FILE_TYPE FILE_TYPE output file format. (json/csv) [default:json]
+
+    -no_scroll, --NO_SCROLL to run query with out scroll. [default:true]
 
 ## Connection Parameters
 
@@ -44,3 +46,7 @@ We cache these values for you in a config.yaml file to save on time and efforts.
 `python3 log_export.py -q '_fetch * from event where $Stream=FIREWALL AND $Duration=1m limit 1000' -sid Default -ft json`
 
 `python3 log_export.py --QUERY '_fetch * from event where $Stream=FIREWALL AND $Duration=1m limit 1000' --SCOPE_ID Default --FILE_TYPE csv`
+
+`python3 log_export.py -q '_fetch * from event where $Stream=FIREWALL AND $Duration=1m limit 1000' -no_scroll`
+
+`python3 log_export.py -q '_fetch * from event where $Stream=FIREWALL AND $Duration=1m limit 1000' --NO_SCROLL`
