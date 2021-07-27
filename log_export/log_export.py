@@ -192,7 +192,7 @@ def get_result(ip_address, task_id, token, limit=100, page_no=1):
     :rtype: dict
     """
     try:
-        url = f"https://{ip_address}:8090/wrk/api/dispatcher/task" \
+        url = f"https://{ip_address}/wrk/api/dispatcher/task" \
               f"/result/{task_id}?pagesize={limit}&pageno={page_no}"
         payload = {}
         headers = {'Token': token}
