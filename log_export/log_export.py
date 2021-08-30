@@ -38,18 +38,23 @@ def without_conf():
         data = {}
         print("Config file not found.\n")
         ip_address = str(input(" Enter the Console IP: "))
+        cluster_id = str(input(" Enter the Cluster ID: "))
         token = str(input(" Enter the Token: "))
+
 
         while True:
             if not ip_address:
                 ip_address = str(input("\n Enter the Console IP: "))
+            if not cluster_id:
+                cluster_id = str(input("\n Enter the Cluster ID: "))
             if not token:
                 token = str(input(" Enter the Token: "))
-            if all(ip_address and token):
+            if all(ip_address and token and cluster_id):
                 break
 
         data['ip_address'] = ip_address
         data['token'] = token
+        data['cluster_id'] = cluster_id
 
         with open('query_config.yaml', 'w') as f_obj:
             yaml.safe_dump(data, f_obj)
@@ -117,7 +122,7 @@ def get_new_query(query):
         return new_query, startime, limit
 
 
-def invoke_call(ip_address, query, token, offset=None, scope_id="default"):
+def invoke_call(ip_address, query, token, cluster_id, offset=None, scope_id="default"):
     """
     An api call to the DNIF Console to invoke atask for provided query
     :param ip_address: Console to connect
@@ -138,7 +143,7 @@ def invoke_call(ip_address, query, token, offset=None, scope_id="default"):
         time_zone = subprocess.check_output("cat /etc/timezone", shell=True)
         time_zone = time_zone.decode().strip()
         task_id = ''
-        url = f"https://{ip_address}/wrk/api/job/invoke"
+        url = f"https://{ip_address}/{cluster_id}/wrk/api/job/invoke"
 
         if offset:
             payload = {"query_timezone": time_zone,
@@ -177,7 +182,7 @@ def invoke_call(ip_address, query, token, offset=None, scope_id="default"):
         return task_id
 
 
-def get_result(ip_address, task_id, token, limit=100, page_no=1):
+def get_result(ip_address, task_id, token, cluster_id, limit=100, page_no=1):
     """
     Getting the data for give task_id
     :param ip_address: Console to connect
@@ -192,7 +197,7 @@ def get_result(ip_address, task_id, token, limit=100, page_no=1):
     :rtype: dict
     """
     try:
-        url = f"https://{ip_address}/wrk/api/dispatcher/task" \
+        url = f"https://{ip_address}/{cluster_id}/wrk/api/dispatcher/task" \
               f"/result/{task_id}?pagesize={limit}&pageno={page_no}"
         payload = {}
         headers = {'Token': token}
@@ -212,7 +217,7 @@ def get_result(ip_address, task_id, token, limit=100, page_no=1):
         return {'status': 'failed'}
 
 
-def get_task_status(ip_address, task_id, token):
+def get_task_status(ip_address, task_id, token, cluster_id):
     """
     Check status of the task submitted to Console
     :param ip_address: Console to connect
@@ -226,7 +231,7 @@ def get_task_status(ip_address, task_id, token):
     """
     data = {}
     try:
-        url = f"https://{ip_address}/wrk/api/dispatcher/task/state/{task_id}"
+        url = f"https://{ip_address}/{cluster_id}/wrk/api/dispatcher/task/state/{task_id}"
         payload = {}
         headers = {'Token': token}
         response = requests.get(url, headers=headers, data=payload, verify=False)
@@ -266,11 +271,11 @@ def with_scroll(data, query, scope_id, file_type):
         new_query, start_time, endtime, limit = get_new_query(query)
 
         task_id = invoke_call(data['ip_address'], new_query,
-                              data['token'], None, scope_id)
+                              data['token'], data['cluster_id'], None, scope_id)
 
         if task_id:
             while True:
-                task_status = get_task_status(data['ip_address'], task_id, data['token'])
+                task_status = get_task_status(data['ip_address'], task_id, data['token'], data['cluster_id'],)
                 if task_status['task_state'] in ['STARTED', 'PENDING']:
                     continue
                 else:
@@ -278,7 +283,7 @@ def with_scroll(data, query, scope_id, file_type):
                         print("Tasking Execution Failed Please Try Again")
                         sys.exit()
                     else:
-                        get_data = get_result(data['ip_address'], task_id, data['token'], limit)
+                        get_data = get_result(data['ip_address'], task_id, data['token'], data['cluster_id'], limit)
                         break
 
             if get_data['status'].lower() == 'success':
@@ -315,11 +320,11 @@ def with_scroll(data, query, scope_id, file_type):
                         break
                     else:
                         task_id = invoke_call(data['ip_address'],
-                                              new_query, data['token'], get_time, scope_id)
+                                              new_query, data['token'], data['cluster_id'], get_time, scope_id)
                         if task_id:
                             while True:
                                 task_status = get_task_status(data['ip_address'],
-                                                              task_id, data['token'])
+                                                              task_id, data['token'], data['cluster_id'])
                                 if task_status['task_state'] in ['STARTED', 'PENDING']:
                                     continue
                                 else:
@@ -328,7 +333,7 @@ def with_scroll(data, query, scope_id, file_type):
                                         sys.exit()
                                     else:
                                         get_data = get_result(data['ip_address'],
-                                                              task_id, data['token'], limit)
+                                                              task_id, data['token'], data['cluster_id'], limit)
                                         break
 
                             if get_data['status'].lower() == 'success':
@@ -390,12 +395,12 @@ def without_scroll(data, query, scope_id, file_type):
         page_no = 0
         new_query, start_time, end_time, limit = get_new_query(query)
         task_id = invoke_call(data['ip_address'], new_query,
-                              data['token'], None, scope_id)
+                              data['token'], data['cluster_id'], None, scope_id)
         limit = 100
         limit_check = limit
         if task_id:
             while True:
-                task_status = get_task_status(data['ip_address'], task_id, data['token'])
+                task_status = get_task_status(data['ip_address'], task_id, data['token'], data['cluster_id'])
                 if task_status['task_state'] in ['STARTED', 'PENDING']:
                     continue
                 else:
@@ -403,7 +408,7 @@ def without_scroll(data, query, scope_id, file_type):
                         print("Tasking Execution Failed Please Try Again")
                         sys.exit()
                     else:
-                        get_data = get_result(data['ip_address'], task_id, data['token'], limit)
+                        get_data = get_result(data['ip_address'], task_id, data['token'], data['cluster_id'], limit)
                         break
 
             if get_data['status'].lower() == 'success':
@@ -439,7 +444,7 @@ def without_scroll(data, query, scope_id, file_type):
                     if task_id:
                         while True:
                             task_status = get_task_status(data['ip_address'],
-                                                          task_id, data['token'])
+                                                          task_id, data['token'], data['cluster_id'])
                             if task_status['task_state'] in ['STARTED', 'PENDING']:
                                 continue
                             else:
@@ -448,7 +453,7 @@ def without_scroll(data, query, scope_id, file_type):
                                     sys.exit()
                                 else:
                                     get_data = get_result(data['ip_address'], task_id,
-                                                          data['token'], limit, page_no)
+                                                          data['token'], data['cluster_id'], limit, page_no)
                                     break
 
                         if get_data['status'].lower() == 'success':
