@@ -162,6 +162,7 @@ def invoke_call(ip_address, query, token, cluster_id, offset=None, scope_id="def
                        "query": query,
                        "wbkname": "untitled",
                        "wbkid": " "}
+                       
 
         headers = {'Token': token,
                    'Content-Type': 'application/json'
