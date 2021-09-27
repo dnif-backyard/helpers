@@ -136,7 +136,7 @@ def get_clause(where_clause, query):
         limit = _limit.group(1)
         return query, startime, endtime, limit
     except Exception as err:
-        pass
+        print("Error in get_clause => ", err)
 
 def get_new_query(query):
     """
