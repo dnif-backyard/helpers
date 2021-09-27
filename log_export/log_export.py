@@ -13,6 +13,7 @@ import os
 import requests
 import yaml
 import urllib3
+import pytz
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -67,6 +68,14 @@ def without_conf():
         return data
 
 
+def convert(time, tz):
+    Stime = datetime.datetime.strptime(time, '%Y-%m-%dT%H:%M:%S')
+    tz_obj = pytz.timezone(tz)
+    datetime_obj = tz_obj.localize(Stime)
+    time_string = datetime_obj.astimezone(pytz.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    return time_string
+
+
 def getduration(pduration):
     """
         get the diff from the pduration
@@ -86,6 +95,48 @@ def getduration(pduration):
         diff = datetime.timedelta(weeks=int(pduration[:-1]))
     return diff
 
+def get_clause(where_clause, query):
+    try:
+        time_zone = subprocess.check_output("cat /etc/timezone", shell=True)
+        time_zone = time_zone.decode().strip()
+        fmt = '%Y-%m-%dT%H:%M:%S'
+        
+        if len([ele for ele in ["$Duration", "$StartTime", "$EndTime"] if (ele in where_clause)]) == 0:
+            if where_clause.strip() == "":
+                where_clause = where_clause + " $Duration=5m"
+            else:
+                where_clause = where_clause + " AND $Duration=5m"
+
+        for subpart in re.split(r'AND|NOT', where_clause):    
+                if '$Duration' in subpart:
+                    chng_date = datetime.datetime.now() - getduration(subpart.split('=')[-1])
+                    startime = chng_date.timestamp() * 1000
+                    endtime = datetime.datetime.now().timestamp() * 1000
+                    start_time = datetime.datetime.fromtimestamp(startime / 1000).strftime(fmt)
+                    end_time = datetime.datetime.fromtimestamp(endtime / 1000).strftime(fmt)
+                    query_alt = f'$StartTime={start_time} AND $EndTime={end_time}'
+
+                    query_list = query.split(" ")
+                    for clause in query_list:
+                        if "$Duration" in query_list:
+                            index = query_list.index(clause)
+                            query = query.replace(clause, query_alt, index)
+                            break
+                    break
+                elif "$StartTime" in subpart:
+                    start_split = subpart.split('=')[-1]
+                    convert_time = convert(start_split.rstrip().replace("'", ""), time_zone)
+                    startime = datetime.datetime.strptime(convert_time, fmt).timestamp() * 1000
+                elif "$EndTime" in subpart:
+                    end_split = subpart.split('=')[-1]
+                    convert_time = convert(end_split.rstrip().replace("'", ""), time_zone)
+                    endtime = datetime.datetime.strptime(convert_time, fmt).timestamp() * 1000
+                
+        _limit = re.search(r"limit\s+(\d+)", query)
+        limit = _limit.group(1)
+        return query, startime, endtime, limit
+    except Exception as err:
+        pass
 
 def get_new_query(query):
     """
@@ -98,28 +149,26 @@ def get_new_query(query):
     endtime = ''
     limit = 0
     try:
-        fmt = '%Y-%m-%dT%H:%M:%S'
-        query_list = query.split()
-        for i in query_list:
-            if '$Duration' in i:
-                chng_date = datetime.datetime.now() - getduration(i.split('=')[-1])
-                startime = chng_date.timestamp() * 1000
-                endtime = datetime.datetime.now().timestamp() * 1000
-                start_time = datetime.datetime.fromtimestamp(startime / 1000).strftime(fmt)
-                end_time = datetime.datetime.fromtimestamp(endtime / 1000).strftime(fmt)
-                query_alt = f'$StartTime={start_time} AND $EndTime={end_time}'
-                index = query_list.index(i)
-                new_query = query.replace(i, query_alt, index)
-        _limit = re.search(r"limit\s+(\d+)", query)
-        limit = _limit.group(1)
+                
+        verb_seq = re.findall(r"\s+(window|first|last|limit|group|where|as|IN)\s+", query)
 
-        return new_query, startime, endtime, limit
+        if "where" in verb_seq:
+            where_clause = re.search(r"\s+where\s+(.*?)\s+(group|first|last|limit|as)", query)
+            where_clause = where_clause.group(1)
+
+            query, startime, endtime, limit = get_clause(where_clause, query)
+            
+            return query, startime, endtime, limit
+        else:
+            where_clause = ""
+            query, startime, endtime, limit = get_clause(where_clause, query)
+            return query, startime, endtime, limit
     except IndexError as err:
         print("Error in getting query => ", err)
-        return new_query, startime, limit
+        return new_query, startime, endtime, limit
     except Exception as err:
         print("Error in getting query => ", err)
-        return new_query, startime, limit
+        return new_query, startime, endtime, limit
 
 
 def invoke_call(ip_address, query, token, cluster_id, offset=None, scope_id="default"):
@@ -276,7 +325,7 @@ def with_scroll(data, query, scope_id, file_type):
 
         if task_id:
             while True:
-                task_status = get_task_status(data['ip_address'], task_id, data['token'], data['cluster_id'],)
+                task_status = get_task_status(data['ip_address'], task_id, data['token'], data['cluster_id'])
                 if task_status['task_state'] in ['STARTED', 'PENDING']:
                     continue
                 else:
@@ -315,7 +364,7 @@ def with_scroll(data, query, scope_id, file_type):
                     sys.exit()
 
                 while True:
-                    if int(endtime) <= get_time:
+                    if int(start_time) >= get_time:
                         print(f"\r Status: {GREEN} COMPLETED \t{END} "
                               f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
                         break
