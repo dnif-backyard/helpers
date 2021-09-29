@@ -13,7 +13,11 @@ import os
 import requests
 import yaml
 import urllib3
-import pytz
+try:
+    import pytz
+except Exception as err:
+    os.system("pip3 install pytz")
+    import pytz
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -69,12 +73,14 @@ def without_conf():
 
 
 def convert(time, tz):
-    Stime = datetime.datetime.strptime(time, '%Y-%m-%dT%H:%M:%S')
-    tz_obj = pytz.timezone(tz)
-    datetime_obj = tz_obj.localize(Stime)
-    time_string = datetime_obj.astimezone(pytz.utc).strftime("%Y-%m-%dT%H:%M:%S")
-    return time_string
-
+    try:
+        Stime = datetime.datetime.strptime(time, '%Y-%m-%dT%H:%M:%S')
+        tz_obj = pytz.timezone(tz)
+        datetime_obj = tz_obj.localize(Stime)
+        time_string = datetime_obj.astimezone(pytz.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        return time_string
+    except Exception as err:
+        print("Error in convert => ", err)
 
 def getduration(pduration):
     """
