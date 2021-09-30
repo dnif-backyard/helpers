@@ -363,7 +363,7 @@ def with_scroll(data, query, scope_id, file_type):
                 print(f"\r Status: {YELLOW}IN PROGRESS \t{END} "
                       f"Records written: {BOLD}{YELLOW}{count}{END} ", end="")
 
-                if len(get_data['result']) != 0:
+                if len(get_data['result']) != 0 and get_data['total_count'] == int(limit):
                     get_time = get_data['result'][-1]['$CNAMTime']
                     tmp = get_time
                 else:
@@ -372,7 +372,8 @@ def with_scroll(data, query, scope_id, file_type):
                     sys.exit()
 
                 while True:
-                    if int(start_time) >= get_time:
+                    break_flag = False
+                    if int(start_time) >= get_time or break_flag:
                         print(f"\r Status: {GREEN} COMPLETED \t{END} "
                               f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
                         break
@@ -413,10 +414,11 @@ def with_scroll(data, query, scope_id, file_type):
                                 print(f"\r Status: {YELLOW}IN PROGRESS \t{END} "
                                       f"Records written: {BOLD}{YELLOW}{count}{END} ", end="")
 
-                                if len(get_data['result']) != 0:
+                                if len(get_data['result']) != 0 and get_data['total_count'] == int(limit):
                                     get_time = get_data['result'][-1]['$CNAMTime']
+                                    print("f",get_time)
                                     if tmp == get_time:
-                                        print("Limit too low  set limit to maximum EPS seen in Deployment")
+                                        print("Limit too low set limit to maximum EPS seen in Deployment")
                                         sys.exit()
                                     else:
                                         tmp = get_time
