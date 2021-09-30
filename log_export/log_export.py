@@ -295,10 +295,10 @@ def get_task_status(ip_address, task_id, token, cluster_id):
             data = response.json()
             if data['status'].lower() == 'success':
                 return data
-            else:
-                print('Task Execution Failed Try Again')
-                sys.exit()
-        return data
+        
+        print('Task Execution Failed for task_id => ', task_id)
+        sys.exit()
+
     except ConnectionError as conn_err:
         print("Error in get_task_status => ", conn_err)
         return data
@@ -324,6 +324,7 @@ def with_scroll(data, query, scope_id, file_type):
     try:
         timestamp = int(time.time())
         count = 0
+        tmp = 0
         new_query, start_time, endtime, limit = get_new_query(query)
 
         task_id = invoke_call(data['ip_address'], new_query,
@@ -364,6 +365,7 @@ def with_scroll(data, query, scope_id, file_type):
 
                 if len(get_data['result']) != 0:
                     get_time = get_data['result'][-1]['$CNAMTime']
+                    tmp = get_time
                 else:
                     print(f"\r Status: {GREEN} COMPLETED \t{END} "
                           f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
@@ -413,6 +415,11 @@ def with_scroll(data, query, scope_id, file_type):
 
                                 if len(get_data['result']) != 0:
                                     get_time = get_data['result'][-1]['$CNAMTime']
+                                    if tmp == get_time:
+                                        print("Limit too low  set limit to maximum EPS seen in Deployment")
+                                        sys.exit()
+                                    else:
+                                        tmp = get_time
                                 else:
                                     print("lenth of list", len(get_data['result']))
                                     print(f"\r Status: {GREEN} COMPLETED \t{END} "
