@@ -337,7 +337,7 @@ def with_scroll(data, query, scope_id, file_type):
                     continue
                 else:
                     if task_status['task_state'] != 'SUCCESS':
-                        print("Tasking Execution Failed Please Try Again")
+                        print("Task Execution Failed for task_id => ", task_id)
                         sys.exit()
                     else:
                         get_data = get_result(data['ip_address'], task_id, data['token'], data['cluster_id'], limit)
@@ -388,7 +388,7 @@ def with_scroll(data, query, scope_id, file_type):
                                     continue
                                 else:
                                     if task_status['task_state'] != 'SUCCESS':
-                                        print("Tasking Execution Failed Please Try Again")
+                                        print("Task Execution Failed for task_id => ", task_id)
                                         sys.exit()
                                     else:
                                         get_data = get_result(data['ip_address'],
@@ -416,7 +416,6 @@ def with_scroll(data, query, scope_id, file_type):
 
                                 if len(get_data['result']) != 0 and get_data['total_count'] == int(limit):
                                     get_time = get_data['result'][-1]['$CNAMTime']
-                                    print("f",get_time)
                                     if tmp == get_time:
                                         print("Limit too low set limit to maximum EPS seen in Deployment")
                                         sys.exit()
@@ -470,7 +469,7 @@ def without_scroll(data, query, scope_id, file_type):
                     continue
                 else:
                     if task_status['task_state'] != 'SUCCESS':
-                        print("Tasking Execution Failed Please Try Again")
+                        print("Task Execution Failed for task_id => ", task_id)
                         sys.exit()
                     else:
                         get_data = get_result(data['ip_address'], task_id, data['token'], data['cluster_id'], limit)
@@ -514,7 +513,7 @@ def without_scroll(data, query, scope_id, file_type):
                                 continue
                             else:
                                 if task_status['task_state'] != 'SUCCESS':
-                                    print("Tasking Execution Failed Please Try Again")
+                                    print("Task Execution Failed for task_id => ", task_id)
                                     sys.exit()
                                 else:
                                     get_data = get_result(data['ip_address'], task_id,
