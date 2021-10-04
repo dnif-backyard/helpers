@@ -294,7 +294,6 @@ def get_task_status(ip_address, task_id, token, cluster_id):
             data = response.json()
             if data['status'].lower() == 'success':
                 return data
-        data['task_state'] = 'FAILURE'
         return data
     except ConnectionError as conn_err:
         print("Error in get_task_status => ", conn_err)
@@ -331,12 +330,11 @@ def with_scroll(data, query, scope_id, file_type):
         if task_id:
             while True:
                 task_status = get_task_status(data['ip_address'], task_id, data['token'], data['cluster_id'])
-                if data:
+                if task_status:
                     if task_status['task_state'] in ['STARTED', 'PENDING']:
                         continue
                     else:
                         if task_status['task_state'] != 'SUCCESS':
-                            print("befor while in scroll")
                             print("Task Execution Failed for task_id => ", task_id)
                             sys.exit()
                         else:
@@ -390,7 +388,7 @@ def with_scroll(data, query, scope_id, file_type):
                             while True:
                                 task_status = get_task_status(data['ip_address'],
                                                               task_id, data['token'], data['cluster_id'])
-                                if data:
+                                if task_status:
                                     if task_status['task_state'] in ['STARTED', 'PENDING']:
                                         continue
                                     else:
