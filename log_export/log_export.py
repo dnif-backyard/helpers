@@ -32,6 +32,7 @@ BOLD = '\033[1m'
 UNDERLINE = '\033[4m'
 END = '\033[0m'
 
+fmt = '%Y-%m-%dT%H:%M:%S'
 
 def without_conf():
     """
@@ -105,7 +106,6 @@ def get_clause(where_clause, query):
     try:
         time_zone = subprocess.check_output("cat /etc/timezone", shell=True)
         time_zone = time_zone.decode().strip()
-        fmt = '%Y-%m-%dT%H:%M:%S'
         
         if len([ele for ele in ["$Duration", "$StartTime", "$EndTime"] if (ele in where_clause)]) == 0:
             if where_clause.strip() == "":
@@ -223,12 +223,11 @@ def invoke_call(ip_address, query, token, cluster_id, offset=None, scope_id="def
                    'Content-Type': 'application/json'
                    }
         response = requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
-
+        
         if response.status_code == 200:
             res = response.json()
             if res['status'] == 'success':
                 task_id = res['data'][0]['id']
-
         return task_id
     except ConnectionError as conn_err:
         print("Error in Invoke => ", conn_err)
@@ -295,10 +294,8 @@ def get_task_status(ip_address, task_id, token, cluster_id):
             data = response.json()
             if data['status'].lower() == 'success':
                 return data
-        
-        print('Task Execution Failed for task_id => ', task_id)
-        sys.exit()
-
+        data['task_state'] = 'FAILURE'
+        return data
     except ConnectionError as conn_err:
         print("Error in get_task_status => ", conn_err)
         return data
@@ -325,23 +322,28 @@ def with_scroll(data, query, scope_id, file_type):
         timestamp = int(time.time())
         count = 0
         tmp = 0
+        task_status_count = 0
         new_query, start_time, endtime, limit = get_new_query(query)
-
+        get_time = endtime
         task_id = invoke_call(data['ip_address'], new_query,
                               data['token'], data['cluster_id'], None, scope_id)
 
         if task_id:
             while True:
                 task_status = get_task_status(data['ip_address'], task_id, data['token'], data['cluster_id'])
-                if task_status['task_state'] in ['STARTED', 'PENDING']:
-                    continue
-                else:
-                    if task_status['task_state'] != 'SUCCESS':
-                        print("Task Execution Failed for task_id => ", task_id)
-                        sys.exit()
+                if data:
+                    if task_status['task_state'] in ['STARTED', 'PENDING']:
+                        continue
                     else:
-                        get_data = get_result(data['ip_address'], task_id, data['token'], data['cluster_id'], limit)
-                        break
+                        if task_status['task_state'] != 'SUCCESS':
+                            print("befor while in scroll")
+                            print("Task Execution Failed for task_id => ", task_id)
+                            sys.exit()
+                        else:
+                            get_data = get_result(data['ip_address'], task_id, data['token'], data['cluster_id'], limit)
+                            break
+                else:
+                    continue
 
             if get_data['status'].lower() == 'success':
                 if file_type == 'csv':
@@ -361,21 +363,25 @@ def with_scroll(data, query, scope_id, file_type):
 
                 print(f"\n\r Writing to file {BOLD}{GREEN}: {timestamp}.{file_type}{END}")
                 print(f"\r Status: {YELLOW}IN PROGRESS \t{END} "
-                      f"Records written: {BOLD}{YELLOW}{count}{END} ", end="")
-
+                f"Date: {BOLD}{YELLOW}{datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}\t{END} "
+                f"Records written: {BOLD}{YELLOW}{count}\t{END} ", end="")
+                        
+                
                 if len(get_data['result']) != 0 and get_data['total_count'] == int(limit):
                     get_time = get_data['result'][-1]['$CNAMTime']
                     tmp = get_time
                 else:
                     print(f"\r Status: {GREEN} COMPLETED \t{END} "
-                          f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
+                    f"Date: {BOLD}{GREEN}{datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}\t{END} "
+                    f"Records written: {BOLD}{GREEN}{count}\t{END} ", end="")
                     sys.exit()
 
                 while True:
                     break_flag = False
                     if int(start_time) >= get_time or break_flag:
                         print(f"\r Status: {GREEN} COMPLETED \t{END} "
-                              f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
+                        f"Date: {BOLD}{GREEN}{datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}\t{END} "
+                        f"Records written: {BOLD}{GREEN}{count}\t{END}  \n", end="")
                         break
                     else:
                         task_id = invoke_call(data['ip_address'],
@@ -384,17 +390,20 @@ def with_scroll(data, query, scope_id, file_type):
                             while True:
                                 task_status = get_task_status(data['ip_address'],
                                                               task_id, data['token'], data['cluster_id'])
-                                if task_status['task_state'] in ['STARTED', 'PENDING']:
-                                    continue
-                                else:
-                                    if task_status['task_state'] != 'SUCCESS':
-                                        print("Task Execution Failed for task_id => ", task_id)
-                                        sys.exit()
+                                if data:
+                                    if task_status['task_state'] in ['STARTED', 'PENDING']:
+                                        continue
                                     else:
-                                        get_data = get_result(data['ip_address'],
-                                                              task_id, data['token'], data['cluster_id'], limit)
-                                        break
-
+                                        if task_status['task_state'] != 'SUCCESS':
+                                            print("Task Execution Failed for task_id => ", task_id)
+                                            print("Log Exported till datetime =>", datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt))
+                                            sys.exit()
+                                        else:
+                                            get_data = get_result(data['ip_address'],
+                                                                task_id, data['token'], data['cluster_id'], limit)
+                                            break
+                                else:
+                                    continue
                             if get_data['status'].lower() == 'success':
 
                                 if file_type == 'json':
@@ -412,28 +421,39 @@ def with_scroll(data, query, scope_id, file_type):
                                                 count = count + 1
 
                                 print(f"\r Status: {YELLOW}IN PROGRESS \t{END} "
-                                      f"Records written: {BOLD}{YELLOW}{count}{END} ", end="")
+                                    f"Date: {BOLD}{YELLOW}{datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}\t{END} "
+                                    f"Records written: {BOLD}{YELLOW}{count}\t{END} ", end="")
 
-                                if len(get_data['result']) != 0 and get_data['total_count'] == int(limit):
-                                    get_time = get_data['result'][-1]['$CNAMTime']
-                                    if tmp == get_time:
-                                        print("Limit too low set limit to maximum EPS seen in Deployment")
+                                if get_data['task_status'] == "Task Executed Successfully":
+                                    task_status_count = 0
+                                    if len(get_data['result']) != 0 and get_data['total_count'] == int(limit) :
+                                        get_time = get_data['result'][-1]['$CNAMTime']
+                                        if tmp == get_time:
+                                            print("Limit too low set limit to maximum EPS seen in Deployment")
+                                            sys.exit()
+                                        else:
+                                            tmp = get_time
+                                    else:
+                                        print(f"\r Status: {GREEN} COMPLETED \t{END} "
+                                        f"Date: {BOLD}{GREEN}{datetime.datetime.fromtimestamp(start_time/ 1000).strftime(fmt)}\t{END} "
+                                        f"Records written: {BOLD}{GREEN}{count}\t{END} \n", end="")
+                                        sys.exit()
+                                else:
+                                    if task_status_count > 15:
+                                        print(f"{get_data.get('message', 'Something went wrong')} => {task_id}")
+                                        print("Log Exported till datetime =>", datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt))
                                         sys.exit()
                                     else:
-                                        tmp = get_time
-                                else:
-                                    print("lenth of list", len(get_data['result']))
-                                    print(f"\r Status: {GREEN} COMPLETED \t{END} "
-                                          f"Records written: {BOLD}{GREEN}{count}{END} \n", end="")
-                                    sys.exit()
+                                        task_status_count = task_status_count + 1
+                                        time.sleep(5) 
                             else:
-                                print("Something went Wrong => Didn't got result")
+                                time.sleep(10)
                         else:
-                            print("Something went Wrong => Didn't got the Id")
+                            time.sleep(10)
             else:
-                print("Something went Wrong => Didn't got result")
+                time.sleep(10)
         else:
-            print("Something went Wrong => Didn't got the Id")
+            print(f"Something went Wrong => {datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}")
     except Exception as err:
         print("Error in with_scroll => ", err)
 
