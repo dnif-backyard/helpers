@@ -1,0 +1,16 @@
+connector_config:
+  log_source: "Postgres"
+database_config:
+  query: "select * from TABLE_NAME where {field_name} > {initial_value} limit FETCH_LIMIT"
+  field_name: somefield
+  initial_value: 0
+  classpath: "rdbms_jar/postgresql-42.2.9.jar"
+  connection_driver: "org.postgresql.Driver"
+  connection_string: "jdbc:postgresql://<DATABASE_SERVER_IP>:<PORT>/<DATABASE>"
+  connection_mode: jdbc
+  user: root
+  password: vaxinpro
+forwarding_config:
+  dst_ip: 127.0.0.1
+  dst_port: 5431
+  transfer_type: udp

@@ -1,0 +1,12 @@
+connector_config:
+  log_source: "Postgres"
+database_config:
+  query: "select * from TABLE_NAME where {field_name} > {initial_value} limit FETCH_LIMIT"
+  field_name: somefield
+  initial_value: 0
+  connection_string: "<Enter proper odbc connection string>"
+  connection_mode: odbc
+forwarding_config:
+  dst_ip: 127.0.0.1
+  dst_port: 5431
+  transfer_type: udp

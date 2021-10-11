@@ -1,0 +1,17 @@
+cx-Oracle==8.0.1
+ipaddr==2.2.0
+JayDeBeApi==1.2.3
+JPype1==1.1.2
+mysql-connector-python==8.0.17
+protobuf==3.13.0
+psycopg2-binary==2.8.6
+pyodbc==4.0.30
+setuptools==50.3.2
+six==1.15.0
+typing-extensions==3.7.4.3
+PyYaml==5.3.1
+pika==1.1.0
+requests==2.24.0
+redis==3.3.1
+orjson==3.4.3
+psutil==5.8.0
