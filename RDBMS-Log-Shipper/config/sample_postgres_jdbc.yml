@@ -8,8 +8,8 @@ database_config:
   connection_driver: "org.postgresql.Driver"
   connection_string: "jdbc:postgresql://<DATABASE_SERVER_IP>:<PORT>/<DATABASE>"
   connection_mode: jdbc
-  user: root
-  password: vaxinpro
+  user: ""
+  password: ""
 forwarding_config:
   dst_ip: 127.0.0.1
   dst_port: 5431
