@@ -81,8 +81,7 @@ elif mode == 'jdbc':
     import jaydebeapi
 
     # Export JDBC driver path to CLASSPATH environment variable
-    default_jars = [":",
-                    f"{connector_path}/rdbms_jar/postgresql-42.2.9.jar",
+    default_jars = [f"{connector_path}/rdbms_jar/postgresql-42.2.9.jar",
                     f"{connector_path}/rdbms_jar/ojdbc8.jar",
                     f"{connector_path}/rdbms_jar/mysql-connector-java-8.0.21.jar",
                     f"{connector_path}/rdbms_jar/mssql-jdbc-7.4.1.jre11.jar"
