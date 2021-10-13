@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 import orjson
 import time
-import pyodbc
 import unicodedata
 import datetime
 import ipaddr
 import uuid
 import yaml
 import os
-import jaydebeapi
 import traceback
 import sys
 import ast
@@ -67,16 +65,33 @@ logger = logg_helper.get_logger(f"RDBMS_{connector_name}", int(log_level), file_
                                 max_bytes=log_max_bytes, backup_count=log_max_bkup_count)
 logger.info(f"Log level set to {log_level}")
 
-if db_config.get('connection_mode', 'odbc').lower() == 'jdbc':
+
+# Load package for odbc/jdbc
+mode = db_config.get('connection_mode', '').lower()
+
+if not mode:
+    logger.error("'connection_mode' not configured in 'database_config' section")
+    logger.info("Configure valid connection_mode [odbc, jdbc]")
+    raise Exception("'connection_mode' not configured in 'database_config' section")
+elif mode == 'odbc':
+    # import package for ODBC
+    import pyodbc
+elif mode == 'jdbc':
+    # import package for JDBC
+    import jaydebeapi
+
+    # Export JDBC driver path to CLASSPATH environment variable
     default_jars = [":",
                     f"{connector_path}/rdbms_jar/postgresql-42.2.9.jar",
                     f"{connector_path}/rdbms_jar/ojdbc8.jar",
                     f"{connector_path}/rdbms_jar/mysql-connector-java-8.0.21.jar",
                     f"{connector_path}/rdbms_jar/mssql-jdbc-7.4.1.jre11.jar"
                     ]
-
-    # Set CLASSPATH for JDBC driver
     os.environ['CLASSPATH'] = db_config.get('classpath', ":".join(default_jars))
+else:
+    logger.error(f"Invalid connection_mode '{mode}' configured")
+    logger.info("Valid connection_mode [odbc, jdbc]")
+    raise Exception(f"Invalid connection_mode '{mode}' configured")
 
 
 def fix_datatype(row):
@@ -109,7 +124,6 @@ def fix_datatype(row):
 def get_connection():
     try:
         logger.debug("Connecting to the database server..")
-        mode = db_config.get('connection_mode', 'odbc').lower()
 
         if mode == 'odbc':
             connection = pyodbc.connect(db_config.get('connection_string'))
@@ -121,10 +135,6 @@ def get_connection():
                                             [db_config.get('user', ''), db_config.get('password', '')])
             logger.debug("Connected to the database server by JDBC!")
             return connection
-        else:
-            logger.error(f"Invalid connection_mode '{mode}' configured")
-            logger.info("Valid connection_mode [odbc, jdbc]")
-            raise Exception(f"Invalid connection_mode '{mode}' configured")
 
     except Exception as e:
         logger.error(f"Error in database connectivity : {e}")
