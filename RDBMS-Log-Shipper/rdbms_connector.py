@@ -72,7 +72,7 @@ mode = db_config.get('connection_mode', '').lower()
 if not mode:
     logger.error("'connection_mode' not configured in 'database_config' section")
     logger.info("Configure valid connection_mode [odbc, jdbc]")
-    raise Exception("'connection_mode' not configured in 'database_config' section")
+    sys.exit(0)
 elif mode == 'odbc':
     # import package for ODBC
     import pyodbc
@@ -90,7 +90,7 @@ elif mode == 'jdbc':
 else:
     logger.error(f"Invalid connection_mode '{mode}' configured")
     logger.info("Valid connection_mode [odbc, jdbc]")
-    raise Exception(f"Invalid connection_mode '{mode}' configured")
+    sys.exit(0)
 
 
 def fix_datatype(row):
@@ -221,8 +221,14 @@ def execute():
             evt_pub_config.update(connector_config)
             evt_pub_config.update(forwarding_config)
 
-            obj = EventPublish(evt_pub_config)
-            obj.spawn_threads()
+            evt_pub_obj = EventPublish(evt_pub_config)
+            success = evt_pub_obj.check_config()
+            if not success:
+                logger.error("Event publisher check config failed!")
+                raise Exception("Event publisher check config failed!")
+
+            evt_pub_obj.spawn_threads()
+
             while True:
                 logs = fetch_log(connection)
                 if not logs:
@@ -243,7 +249,7 @@ def execute():
                             logger.warning("Skipping log. Check 'raw_log' in DEBUG mode")
                             logger.debug(f"raw_log : {raw_log}")
                             continue
-                        obj.sendtoevtbuffer(orjson.dumps(log_event))
+                        evt_pub_obj.sendtoevtbuffer(orjson.dumps(log_event))
                         logger.debug("Log sent to buffer")
 
     except Exception as e:

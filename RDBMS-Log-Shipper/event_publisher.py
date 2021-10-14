@@ -23,6 +23,42 @@ class EventPublish:
         except Exception as e:
             logging.error(f"init failed : {e}")
 
+    def check_config(self):
+        try:
+            if not self.transfer_type:
+                logging.error("'transfer_type' not configured in 'forwarding_config' section")
+                logging.info("Configure valid transfer_type [udp, tcp]")
+                return False
+
+            elif self.transfer_type.lower() not in ['udp', 'tcp']:
+                logging.error(f"Invalid transfer_type '{self.transfer_type}' configured")
+                logging.info("Valid transfer_type ['udp', 'tcp']")
+                return False
+
+            elif not self.ip or not self.port:
+                logging.error("'dst_ip' or 'dst_port' not configured in 'forwarding_config' section")
+                logging.info("Enter proper IP and Port")
+                return False
+
+            try:
+                socket.inet_aton(self.ip)
+            except:
+                logging.error(f"dst_ip'{self.ip}' is not valid IP address in 'forwarding_config' section")
+                logging.info("Enter proper IP address")
+                return False
+
+            try:
+                self.port = int(self.port)
+            except:
+                logging.error(f"dst_port'{self.port}' is not valid port number in 'forwarding_config' section")
+                logging.info("Enter proper port number")
+                return False
+
+            return True
+        except Exception as e:
+            logging.error(f"Error in check config : {e}")
+            return False
+
     def sendtoevtbuffer(self, raw_log):
         event_buffer.put(raw_log)
 
@@ -76,11 +112,6 @@ class EventPublish:
                 self.send_away(bunch)
 
             return 1
-
-        else:
-            logging.error(f"Invalid transfer_type '{self.transfer_type}' configured")
-            logging.info("Valid transfer_type ['udp', 'tcp']")
-            raise Exception(f"Invalid transfer_type '{self.transfer_type}' configured")
 
     def publish_process(self, event_buffer):
         bunch = []
