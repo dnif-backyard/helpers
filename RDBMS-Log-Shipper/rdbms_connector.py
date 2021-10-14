@@ -57,6 +57,7 @@ if not os.path.exists(bookmark_directory):
 
 bookmark = dict()
 
+# Database query default value
 marker_initial_value = db_config.get('initial_value', '')
 query_vars = dict()
 query_vars['field_name'] = db_config.get('field_name', '')
@@ -124,15 +125,32 @@ def get_connection():
     try:
         logger.debug("Connecting to the database server..")
 
+        connection_string = db_config.get('connection_string', '')
+        if not connection_string:
+            logger.error("'connection_string' not defined in 'database_config' section")
+            logger.info("Specify proper 'connection_string' in 'database_config' section")
+            raise Exception("'connection_string' not defined in 'database_config' section")
+
         if mode == 'odbc':
-            connection = pyodbc.connect(db_config.get('connection_string'))
-            logger.debug("Connected to the database server by ODBC!")
+            connection = pyodbc.connect(connection_string)
+            logger.info("Connected to the database server by ODBC!")
             return connection
         elif mode == 'jdbc':
-            connection = jaydebeapi.connect(db_config.get("connection_driver", ''),
-                                            db_config.get('connection_string', ''),
-                                            [db_config.get('user', ''), db_config.get('password', '')])
-            logger.debug("Connected to the database server by JDBC!")
+            connection_driver = db_config.get("connection_driver", '')
+            username = db_config.get("user", '')
+            password = db_config.get("password", '')
+
+            if not connection_driver:
+                logger.error("'connection_driver' not defined in 'database_config' section")
+                logger.info("Specify proper 'connection_driver' in 'database_config' section")
+                raise Exception("'connection_driver' not defined in 'database_config' section")
+            elif not username or not password:
+                logger.error("'user' or 'password' not defined in 'database_config' section")
+                logger.info("Specify proper 'user' and 'password' in 'database_config' section")
+                raise Exception("'user' or 'password' not defined in 'database_config' section")
+
+            connection = jaydebeapi.connect(connection_driver, connection_string, [username, password])
+            logger.info("Connected to the database server by JDBC!")
             return connection
 
     except Exception as e:
@@ -149,6 +167,16 @@ def fetch_log(connection):
         cursor = connection.cursor()
 
         marker_value = bookmark.get('marker_value', marker_initial_value)
+
+        if not marker_value:
+            logger.error("'initial_value' not defined in 'database_config' section")
+            logger.info("Specify proper 'initial_value' in 'database_config'")
+            raise Exception("'initial_value' not defined in 'database_config' section")
+        elif not query_vars['field_name']:
+            logger.error("'field_name' not defined in 'database_config' section")
+            logger.info("Specify proper 'field_name' in 'database_config'")
+            raise Exception("'field_name' not defined in 'database_config' section")
+
         query_vars['initial_value'] = marker_value
         query_str = db_config.get('query', '')
         query = query_str.format(**query_vars)
@@ -173,12 +201,12 @@ def fetch_log(connection):
 
                 if count == len(rows):
                     # Set the bookmark and write into config file
-                    bookmark['marker_value'] = str(result[db_config.get('field_name', '')])
+                    bookmark['marker_value'] = str(result[db_config['field_name']])
                     with open(bookmark_file, 'w') as yaml_file:
                         yaml.safe_dump(bookmark, yaml_file)
                 log_data.append(str(result))
 
-        logger.debug(f"Log sent till : {db_config.get('field_name', '')} = {bookmark.get('marker_value', '')}")
+            logger.debug(f"Log sent till : {db_config['field_name']} = {bookmark.get('marker_value', '')}")
         return log_data
 
     except Exception as e:
