@@ -228,7 +228,7 @@ def execute():
             logger.error("connector not configured")
             sys.exit(0)
 
-        global bookmark, bunch_ar
+        global bookmark
 
         backoff = connector_config.get('backoff_duration', 10)
 
@@ -243,8 +243,6 @@ def execute():
         connection = get_connection()
 
         if connection:
-            bunch_ar = []
-
             evt_pub_config = {}
             evt_pub_config.update(connector_config)
             evt_pub_config.update(forwarding_config)
