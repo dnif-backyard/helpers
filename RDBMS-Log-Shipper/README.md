@@ -4,6 +4,15 @@ RDBMS stands for Relational Database Management System. RDBMS is the basis for S
 
 The RDBMS connector fetches logs from the Database server through ODBC or JDBC and forwards to DNIF Core using UDP or TCP client.
 
+## Setup
+
+Clone the helpers repository from github.
+`git clone https://github.com/rajboke2/helpers.git -b rdbms_log_shipper`
+Go inside the RDBMS-Log_Shipper directory.
+`cd RDBMS-Log-Shipper`
+Run the requirement.sh as shown below:
+`bash requirement.sh`
+
 ## Configuration
 
 Create configuration file inside RDBMS-Log-Shipper/config/ directory or in any desired location.
