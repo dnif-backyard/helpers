@@ -7,11 +7,14 @@ The RDBMS connector fetches logs from the Database server through ODBC or JDBC a
 ## Setup
 
 1. Clone the helpers repository from github.
-`git clone https://github.com/rajboke2/helpers.git -b rdbms_log_shipper`
+
+    `git clone https://github.com/rajboke2/helpers.git -b rdbms_log_shipper`
 2. Go inside the RDBMS-Log_Shipper directory.
-`cd RDBMS-Log-Shipper`
+
+    `cd RDBMS-Log-Shipper`
 3. Run the requirement.sh as shown below:
-`bash requirement.sh`
+
+    `bash requirement.sh`
 
 ## Configuration
 
