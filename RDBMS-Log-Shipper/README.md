@@ -4,6 +4,10 @@ RDBMS stands for Relational Database Management System. RDBMS is the basis for S
 
 The RDBMS connector fetches logs from the Database server through ODBC or JDBC and forwards to DNIF Core using UDP or TCP client.
 
+## Prerequisite
+
+Requires atleast Java JDK to connect database through JDBC. Also, Ensure JAVA_HOME environment variable is set.
+
 ## Setup
 
 1. Clone the helpers repository from github.
