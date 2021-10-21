@@ -6,7 +6,7 @@ The RDBMS connector fetches logs from the Database server through ODBC or JDBC a
 
 ## Prerequisite
 
-Requires atleast Java JDK to connect database through JDBC. Also, Ensure JAVA_HOME environment variable is set.
+Requires atleast Java JDK version-14 to connect database through JDBC. Also, Ensure JAVA_HOME environment variable is set.
 
 ## Setup
 
