@@ -12,7 +12,7 @@ Requires atleast Java JDK version-14 to connect database through JDBC. Also, Ens
 
 1. Clone the helpers repository from github.
 
-    `git clone https://github.com/rajboke2/helpers.git -b rdbms_log_shipper`
+    `git clone https://github.com/rajboke2/helpers.git`
 2. Go inside the RDBMS-Log-Shipper directory.
 
     `cd helpers/RDBMS-Log-Shipper/`
