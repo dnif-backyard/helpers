@@ -115,28 +115,27 @@ def get_clause(where_clause, query):
 
         for subpart in re.split(r'AND|NOT', where_clause):    
                 if '$Duration' in subpart:
-                    chng_date = datetime.datetime.now() - getduration(subpart.split('=')[-1])
-                    startime = chng_date.timestamp() * 1000
-                    endtime = datetime.datetime.now().timestamp() * 1000
-                    start_time = datetime.datetime.fromtimestamp(startime / 1000).strftime(fmt)
-                    end_time = datetime.datetime.fromtimestamp(endtime / 1000).strftime(fmt)
+                    cdate = datetime.datetime.now()
+                    diff = cdate - getduration(subpart.split('=')[-1])
+                    startime = diff.timestamp() * 1000
+                    endtime = cdate.timestamp() * 1000
+                    start_time = diff.strftime(fmt)
+                    end_time = cdate.strftime(fmt)
                     query_alt = f'$StartTime={start_time} AND $EndTime={end_time}'
-
                     query_list = query.split(" ")
                     for clause in query_list:
-                        if "$Duration" in query_list:
+                        if "$Duration" in clause:
                             index = query_list.index(clause)
                             query = query.replace(clause, query_alt, index)
                             break
                     break
                 elif "$StartTime" in subpart:
                     start_split = subpart.split('=')[-1]
-                    convert_time = convert(start_split.rstrip().replace("'", ""), time_zone)
-                    startime = datetime.datetime.strptime(convert_time, fmt).timestamp() * 1000
+                    startime = datetime.datetime.strptime(start_split.rstrip().replace("'", ""), fmt).timestamp() * 1000
                 elif "$EndTime" in subpart:
+
                     end_split = subpart.split('=')[-1]
-                    convert_time = convert(end_split.rstrip().replace("'", ""), time_zone)
-                    endtime = datetime.datetime.strptime(convert_time, fmt).timestamp() * 1000
+                    endtime = datetime.datetime.strptime(end_split.rstrip().replace("'", ""), fmt).timestamp() * 1000
                 
         _limit = re.search(r"limit\s+(\d+)", query)
         limit = _limit.group(1)
@@ -163,7 +162,6 @@ def get_new_query(query):
             where_clause = where_clause.group(1)
 
             query, startime, endtime, limit = get_clause(where_clause, query)
-            
             return query, startime, endtime, limit
         else:
             where_clause = ""
@@ -375,8 +373,7 @@ def with_scroll(data, query, scope_id, file_type):
                     sys.exit()
 
                 while True:
-                    break_flag = False
-                    if int(start_time) >= get_time or break_flag:
+                    if int(start_time/ 1000) >= int(get_time/ 1000):
                         print(f"\r Status: {GREEN} COMPLETED \t{END} "
                         f"Date: {BOLD}{GREEN}{datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}\t{END} "
                         f"Records written: {BOLD}{GREEN}{count}\t{END}  \n", end="")
