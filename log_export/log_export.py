@@ -373,14 +373,7 @@ def with_scroll(data, query, scope_id, file_type):
                     sys.exit()
 
                 while True:
-                    # print(f"start_time {datetime.datetime.fromtimestamp(start_time/ 1000).strftime(fmt)}" )
-                    # print(f"get_time {datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}" )
-                    # print(int(start_time), get_time)
-                    # if int(start_time) >= get_time:
-                    #     print("start_time > get_time")
-                    # else:
-                    #     print("start_time < get_time")
-                    if int(start_time) >= get_time:
+                    if int(start_time/ 1000) >= int(get_time/ 1000):
                         print(f"\r Status: {GREEN} COMPLETED \t{END} "
                         f"Date: {BOLD}{GREEN}{datetime.datetime.fromtimestamp(get_time/ 1000).strftime(fmt)}\t{END} "
                         f"Records written: {BOLD}{GREEN}{count}\t{END}  \n", end="")
